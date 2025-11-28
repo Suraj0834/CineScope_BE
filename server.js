@@ -81,7 +81,16 @@ connectDB();
 // ROUTES
 // ===========================
 
-// Health check endpoint
+// Health check endpoint for Render
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     success: true,
