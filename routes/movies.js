@@ -425,7 +425,7 @@ router.get('/:id', async (req, res) => {
         return res.json({
           success: true,
           message: 'Movie details fetched successfully (OMDb only)',
-          data: { movie: movieData }
+          data: movieData
         });
       }
     } else {
@@ -581,7 +581,7 @@ router.get('/:id', async (req, res) => {
     res.json({
       success: true,
       message: 'Movie details fetched successfully (Trakt+OMDb)',
-      data: { movie: movieData }
+      data: movieData
     });
   } catch (error) {
     console.error('Movie details error:', error.message);
