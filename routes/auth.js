@@ -361,4 +361,64 @@ router.post('/verify-otp', async (req, res) => {
   }
 });
 
+// Alias for forgot-password (compatibility)
+router.post('/forgot-password', otpLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Validate input
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email address'
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email: email.toLowerCase() });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'No account found with this email address'
+      });
+    }
+
+    // Generate OTP
+    const otpCode = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
+
+    // Delete any existing OTPs for this email
+    await Otp.deleteMany({ email: email.toLowerCase() });
+
+    // Save new OTP
+    const otp = new Otp({
+      email: email.toLowerCase(),
+      code: otpCode,
+      expiresAt
+    });
+
+    await otp.save();
+
+    // Send OTP email
+    await sendOTPEmail(email, otpCode);
+
+    res.json({
+      success: true,
+      message: 'OTP sent successfully to your email',
+      data: {
+        email: email.toLowerCase(),
+        expiresIn: '10 minutes'
+      }
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP. Please try again.',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
