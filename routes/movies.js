@@ -175,22 +175,24 @@ router.get('/popular', async (req, res) => {
  */
 router.get('/search', async (req, res) => {
   try {
-    const { q, page = 1, limit = 20 } = req.query;
-    if (!q) return res.status(400).json({ success: false, message: 'Query required' });
+    // Accept both 'q' and 'query' parameters for compatibility
+    const { q, query, page = 1, limit = 20 } = req.query;
+    const searchQuery = q || query;
+    if (!searchQuery) return res.status(400).json({ success: false, message: 'Query required' });
 
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
-    const traktData = await traktService.searchMovies(q, pageNum, limitNum);
+    const traktData = await traktService.searchMovies(searchQuery, pageNum, limitNum);
     const movies = await enrichWithOmdb(traktData);
 
     const hasMore = movies.length >= limitNum;
-    
+
     res.json({
       success: true,
       message: 'Search results fetched successfully',
       data: {
-        query: q,
+        query: searchQuery,
         page: pageNum,
         totalPages: hasMore ? pageNum + 5 : pageNum,
         totalResults: hasMore ? (pageNum + 5) * limitNum : pageNum * movies.length,
@@ -201,6 +203,139 @@ router.get('/search', async (req, res) => {
   } catch (error) {
     console.error('Search error:', error.message);
     res.status(500).json({ success: false, message: 'Failed to search movies' });
+  }
+});
+
+/**
+ * @route   GET /api/movies/top-rated
+ * @desc    Get top rated movies from Trakt + OMDb
+ * @access  Public
+ */
+router.get('/top-rated', async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    // Use popular movies sorted by rating
+    const traktData = await traktService.getPopularMovies(pageNum, limitNum);
+    const movies = await enrichWithOmdb(traktData);
+
+    // Sort by rating (voteAverage)
+    const sortedMovies = movies.sort((a, b) => b.voteAverage - a.voteAverage);
+
+    const hasMore = movies.length >= limitNum;
+
+    res.json({
+      success: true,
+      message: 'Top rated movies fetched successfully',
+      data: {
+        page: pageNum,
+        totalPages: hasMore ? pageNum + 10 : pageNum,
+        totalResults: hasMore ? (pageNum + 10) * limitNum : pageNum * movies.length,
+        hasMore: hasMore,
+        movies: sortedMovies
+      }
+    });
+  } catch (error) {
+    console.error('Top rated error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch top rated movies' });
+  }
+});
+
+/**
+ * @route   GET /api/movies/genres
+ * @desc    Get all movie genres
+ * @access  Public
+ */
+router.get('/genres', async (req, res) => {
+  try {
+    // Return common movie genres
+    const genres = [
+      { id: 1, name: 'Action' },
+      { id: 2, name: 'Adventure' },
+      { id: 3, name: 'Animation' },
+      { id: 4, name: 'Comedy' },
+      { id: 5, name: 'Crime' },
+      { id: 6, name: 'Documentary' },
+      { id: 7, name: 'Drama' },
+      { id: 8, name: 'Family' },
+      { id: 9, name: 'Fantasy' },
+      { id: 10, name: 'History' },
+      { id: 11, name: 'Horror' },
+      { id: 12, name: 'Music' },
+      { id: 13, name: 'Mystery' },
+      { id: 14, name: 'Romance' },
+      { id: 15, name: 'Science Fiction' },
+      { id: 16, name: 'Thriller' },
+      { id: 17, name: 'War' },
+      { id: 18, name: 'Western' }
+    ];
+
+    res.json({
+      success: true,
+      message: 'Genres fetched successfully',
+      data: { genres }
+    });
+  } catch (error) {
+    console.error('Genres error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to fetch genres' });
+  }
+});
+
+/**
+ * @route   GET /api/movies/discover
+ * @desc    Discover movies with filters
+ * @access  Public
+ */
+router.get('/discover', async (req, res) => {
+  try {
+    const { page = 1, limit = 20, genre, year, sortBy = 'popularity.desc' } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+
+    // For now, use popular movies as base
+    // TODO: Implement genre/year filtering when Trakt service supports it
+    const traktData = await traktService.getPopularMovies(pageNum, limitNum);
+    let movies = await enrichWithOmdb(traktData);
+
+    // Filter by genre if provided
+    if (genre) {
+      const genreLower = genre.toLowerCase();
+      movies = movies.filter(movie =>
+        movie.genre && movie.genre.toLowerCase().includes(genreLower)
+      );
+    }
+
+    // Filter by year if provided
+    if (year) {
+      movies = movies.filter(movie => movie.year === year.toString());
+    }
+
+    // Sort based on sortBy parameter
+    if (sortBy === 'vote_average.desc') {
+      movies.sort((a, b) => b.voteAverage - a.voteAverage);
+    } else if (sortBy === 'release_date.desc') {
+      movies.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+    }
+    // Default is popularity.desc (already sorted from API)
+
+    const hasMore = movies.length >= limitNum;
+
+    res.json({
+      success: true,
+      message: 'Movies discovered successfully',
+      data: {
+        page: pageNum,
+        totalPages: hasMore ? pageNum + 10 : pageNum,
+        totalResults: hasMore ? (pageNum + 10) * limitNum : pageNum * movies.length,
+        hasMore: hasMore,
+        movies: movies
+      }
+    });
+  } catch (error) {
+    console.error('Discover error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to discover movies' });
   }
 });
 
@@ -464,33 +599,6 @@ router.get('/:id', async (req, res) => {
       error: error.message
     });
   }
-});
-
-// Stub other endpoints to prevent crashes
-router.get('/top-rated', async (req, res) => {
-  // Redirect to popular for now
-  res.redirect('/api/movies/popular');
-});
-
-router.get('/genres', async (req, res) => {
-  res.json({ success: true, data: { genres: [] } });
-});
-
-router.get('/discover', async (req, res) => {
-  // Redirect to popular
-  res.redirect('/api/movies/popular');
-});
-
-router.get('/:tmdbId/credits', async (req, res) => {
-  res.json({ success: true, data: { cast: [], crew: [] } });
-});
-
-router.get('/:tmdbId/videos', async (req, res) => {
-  res.json({ success: true, data: { videos: [] } });
-});
-
-router.get('/:tmdbId/watch-providers', async (req, res) => {
-  res.json({ success: true, data: { country: 'IN', providers: null } });
 });
 
 module.exports = router;

@@ -25,11 +25,13 @@ const userSchema = new mongoose.Schema({
   watchlist: [{
     tmdbId: {
       type: Number,
-      required: true
+      required: false,
+      default: null
     },
-    // Keep imdbId temporarily for migration compatibility
+    // IMDB ID - primary identifier for Android app
     imdbId: {
       type: String,
+      required: false,
       default: null
     },
     title: {
@@ -48,11 +50,13 @@ const userSchema = new mongoose.Schema({
   favorites: [{
     tmdbId: {
       type: Number,
-      required: true
+      required: false,
+      default: null
     },
-    // Keep imdbId temporarily for migration compatibility
+    // IMDB ID - primary identifier for Android app
     imdbId: {
       type: String,
+      required: false,
       default: null
     },
     title: {

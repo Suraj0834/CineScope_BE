@@ -131,8 +131,120 @@ router.get('/watchlist', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/profile/watchlist
+ * @desc    Add movie to watchlist (Android compatible)
+ * @access  Private (JWT required)
+ */
+router.post('/watchlist', authenticateToken, async (req, res) => {
+  try {
+    const { imdbId, title, posterPath } = req.body;
+
+    if (!imdbId) {
+      return res.status(400).json({
+        success: false,
+        message: 'imdbId is required'
+      });
+    }
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if already in watchlist (search by imdbId)
+    const existingItem = user.watchlist.find(item => item.imdbId === imdbId);
+    if (existingItem) {
+      return res.status(400).json({
+        success: false,
+        message: 'Movie already in watchlist'
+      });
+    }
+
+    // Add to watchlist with imdbId
+    user.watchlist.push({
+      imdbId,
+      tmdbId: null, // Will be populated if available
+      title: title || '',
+      posterPath: posterPath || '',
+      addedAt: new Date()
+    });
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Movie added to watchlist',
+      data: {
+        imdbId,
+        watchlistCount: user.watchlist.length
+      }
+    });
+  } catch (error) {
+    console.error('Add to watchlist error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add to watchlist',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/profile/watchlist/:imdbId
+ * @desc    Remove movie from watchlist (Android compatible)
+ * @access  Private (JWT required)
+ */
+router.delete('/watchlist/:imdbId', authenticateToken, async (req, res) => {
+  try {
+    const { imdbId } = req.params;
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if movie exists in watchlist
+    const existingItem = user.watchlist.find(item => item.imdbId === imdbId);
+    if (!existingItem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Movie not found in watchlist'
+      });
+    }
+
+    // Remove from watchlist
+    user.watchlist = user.watchlist.filter(item => item.imdbId !== imdbId);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Movie removed from watchlist',
+      data: {
+        imdbId,
+        watchlistCount: user.watchlist.length
+      }
+    });
+  } catch (error) {
+    console.error('Remove from watchlist error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove from watchlist',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   PUT /api/profile/watchlist
- * @desc    Add or remove movie from watchlist
+ * @desc    Add or remove movie from watchlist (Legacy - supports tmdbId)
  * @access  Private (JWT required)
  */
 router.put('/watchlist', authenticateToken, async (req, res) => {
@@ -262,8 +374,120 @@ router.get('/favorites', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   POST /api/profile/favorites
+ * @desc    Add movie to favorites (Android compatible)
+ * @access  Private (JWT required)
+ */
+router.post('/favorites', authenticateToken, async (req, res) => {
+  try {
+    const { imdbId, title, posterPath } = req.body;
+
+    if (!imdbId) {
+      return res.status(400).json({
+        success: false,
+        message: 'imdbId is required'
+      });
+    }
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if already in favorites (search by imdbId)
+    const existingItem = user.favorites.find(item => item.imdbId === imdbId);
+    if (existingItem) {
+      return res.status(400).json({
+        success: false,
+        message: 'Movie already in favorites'
+      });
+    }
+
+    // Add to favorites with imdbId
+    user.favorites.push({
+      imdbId,
+      tmdbId: null, // Will be populated if available
+      title: title || '',
+      posterPath: posterPath || '',
+      addedAt: new Date()
+    });
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Movie added to favorites',
+      data: {
+        imdbId,
+        favoritesCount: user.favorites.length
+      }
+    });
+  } catch (error) {
+    console.error('Add to favorites error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add to favorites',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * @route   DELETE /api/profile/favorites/:imdbId
+ * @desc    Remove movie from favorites (Android compatible)
+ * @access  Private (JWT required)
+ */
+router.delete('/favorites/:imdbId', authenticateToken, async (req, res) => {
+  try {
+    const { imdbId } = req.params;
+
+    const user = await User.findById(req.userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if movie exists in favorites
+    const existingItem = user.favorites.find(item => item.imdbId === imdbId);
+    if (!existingItem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Movie not found in favorites'
+      });
+    }
+
+    // Remove from favorites
+    user.favorites = user.favorites.filter(item => item.imdbId !== imdbId);
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Movie removed from favorites',
+      data: {
+        imdbId,
+        favoritesCount: user.favorites.length
+      }
+    });
+  } catch (error) {
+    console.error('Remove from favorites error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to remove from favorites',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   PUT /api/profile/favorites
- * @desc    Add or remove movie from favorites
+ * @desc    Add or remove movie from favorites (Legacy - supports tmdbId)
  * @access  Private (JWT required)
  */
 router.put('/favorites', authenticateToken, async (req, res) => {
@@ -356,8 +580,56 @@ router.put('/favorites', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @route   GET /api/profile/status/:imdbId
+ * @desc    Check if movie is in watchlist or favorites (Android compatible)
+ * @access  Private (JWT required)
+ */
+router.get('/status/:imdbId', authenticateToken, async (req, res) => {
+  try {
+    const { imdbId } = req.params;
+
+    if (!imdbId) {
+      return res.status(400).json({
+        success: false,
+        message: 'imdbId is required'
+      });
+    }
+
+    const user = await User.findById(req.userId).select('watchlist favorites');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check by imdbId
+    const isInWatchlist = user.watchlist.some(item => item.imdbId === imdbId);
+    const isInFavorites = user.favorites.some(item => item.imdbId === imdbId);
+
+    res.json({
+      success: true,
+      message: 'Check completed',
+      data: {
+        imdbId,
+        isInWatchlist,
+        isInFavorites
+      }
+    });
+  } catch (error) {
+    console.error('Check movie error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to check movie status',
+      error: error.message
+    });
+  }
+});
+
+/**
  * @route   GET /api/profile/check/:tmdbId
- * @desc    Check if movie is in watchlist or favorites
+ * @desc    Check if movie is in watchlist or favorites (Legacy - supports tmdbId)
  * @access  Private (JWT required)
  */
 router.get('/check/:tmdbId', authenticateToken, async (req, res) => {
