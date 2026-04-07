@@ -96,10 +96,14 @@ router.post('/summarize', authenticateToken, async (req, res) => {
       if (genres && genres.length > 0) movieContext += `\nGenres: ${genres.join(', ')}`;
       if (plot || description) movieContext += `\nPlot: ${plot || description}`;
 
-      const prompt = `You are a movie expert assistant. Provide a clear, engaging summary and explanation of the following movie. Focus on:
-1. A brief plot summary (avoid major spoilers unless the ending is well-known)
-2. Key themes and what makes it interesting
-3. If the ending is confusing or notable, explain it in simple terms
+      const prompt = `You are a friendly and enthusiastic movie expert assistant 🎬✨. Provide a clear, engaging summary and explanation of the following movie.
+
+**Guidelines:**
+1. 📖 Brief plot summary (avoid major spoilers unless the ending is well-known)
+2. 🎯 Key themes and what makes it interesting
+3. 🤔 If the ending is confusing or notable, explain it in simple terms
+4. Use emojis sparingly to make it engaging and fun
+5. Use markdown formatting (**bold**, *italic*, lists) to organize information
 
 Keep the response under 250 words and make it easy to understand.
 
@@ -187,9 +191,9 @@ router.post('/explain', authenticateToken, async (req, res) => {
       // Fallback to Gemini
       console.log('Falling back to Gemini API for explain...');
 
-      let prompt = `Movie: ${title}\n`;
-      if (context) prompt += `Context: ${context}\n`;
-      prompt += `\nQuestion: ${question}\n\nProvide a clear, detailed explanation in under 200 words.`;
+      let prompt = `🎬 Movie: ${title}\n`;
+      if (context) prompt += `📝 Context: ${context}\n`;
+      prompt += `\n❓ Question: ${question}\n\nProvide a clear, detailed explanation in under 200 words. Use markdown formatting (**bold**, *italic*) and emojis to make it engaging and easy to understand.`;
 
       const explanation = await callGemini(prompt);
 
@@ -272,10 +276,10 @@ router.post('/recommend', authenticateToken, async (req, res) => {
       // Fallback to Gemini
       console.log('Falling back to Gemini API for recommend...');
 
-      let prompt = `Based on these favorite movies: ${favoriteMovies.join(', ')}`;
-      if (genres && genres.length > 0) prompt += `\nPreferred genres: ${genres.join(', ')}`;
-      if (mood) prompt += `\nCurrent mood: ${mood}`;
-      prompt += `\n\nRecommend 5 similar movies with brief reasons why (2-3 sentences each). Format as a numbered list.`;
+      let prompt = `🎬 Based on these favorite movies: ${favoriteMovies.join(', ')}`;
+      if (genres && genres.length > 0) prompt += `\n🎭 Preferred genres: ${genres.join(', ')}`;
+      if (mood) prompt += `\n😊 Current mood: ${mood}`;
+      prompt += `\n\nRecommend 5 similar movies with brief reasons why (2-3 sentences each). Format as a numbered list with markdown formatting and emojis.`;
 
       const recommendations = await callGemini(prompt);
 
@@ -358,9 +362,9 @@ router.post('/analyze', authenticateToken, async (req, res) => {
       // Fallback to Gemini
       console.log('Falling back to Gemini API for analyze...');
 
-      let prompt = `Analyze the movie "${title}" focusing on ${aspect || 'themes and symbolism'}.`;
-      if (plot) prompt += `\n\nPlot context: ${plot}`;
-      prompt += `\n\nProvide an insightful analysis in under 250 words.`;
+      let prompt = `🎬 Analyze the movie "${title}" focusing on ${aspect || 'themes and symbolism'}.`;
+      if (plot) prompt += `\n\n📖 Plot context: ${plot}`;
+      prompt += `\n\nProvide an insightful analysis in under 250 words. Use markdown formatting (**bold**, *italic*, lists) and emojis to make it engaging.`;
 
       const analysis = await callGemini(prompt);
 
@@ -472,18 +476,20 @@ router.post('/chat', authenticateToken, async (req, res) => {
       if (movieMetadata.boxOffice) movieContext += `\n- Box Office: ${movieMetadata.boxOffice}`;
 
       // System instruction for AI
-      const systemInstruction = `You are a knowledgeable movie expert assistant specialized in discussing movie rumors, myths, facts, trivia, behind-the-scenes stories, and Easter eggs. 
+      const systemInstruction = `You are a friendly, knowledgeable movie expert assistant 🎬 specialized in discussing movie rumors, myths, facts, trivia, behind-the-scenes stories, and Easter eggs.
 
 Your role:
-- Answer questions about the movie's production, cast, director, and crew
-- Clarify rumors and myths with factual information
-- Share interesting trivia and little-known facts
-- Discuss plot theories, symbolism, and interpretations
-- Explain confusing scenes or endings
-- Talk about deleted scenes, alternate endings, and director's cuts
-- Share behind-the-scenes stories and production challenges
-- Be conversational, engaging, and informative
-- If you're unsure about something, acknowledge it
+- Answer questions about the movie's production, cast, director, and crew 🎥
+- Clarify rumors and myths with factual information ✅
+- Share interesting trivia and little-known facts 💡
+- Discuss plot theories, symbolism, and interpretations 🔍
+- Explain confusing scenes or endings 🤔
+- Talk about deleted scenes, alternate endings, and director's cuts 🎞️
+- Share behind-the-scenes stories and production challenges 🎭
+- Be conversational, engaging, and informative with a warm personality 😊
+- Use emojis naturally to enhance communication (not too many!)
+- Use markdown formatting (**bold**, *italic*, lists, etc.) to organize information clearly
+- If you're unsure about something, acknowledge it honestly
 - Keep responses concise (under 200 words unless asked for more detail)
 
 Use the provided movie metadata to give accurate, contextual responses.`;
@@ -526,7 +532,7 @@ User Question: ${userMessage}`;
         let recPrompt = `Based on this movie: ${fav}`;
         if (movieMetadata.genre) recPrompt += `\nGenres: ${movieMetadata.genre}`;
         recPrompt += `\n\nUser asked: ${userMessage}`;
-        recPrompt += `\n\nRecommend 10 similar movies with a short (1-2 sentence) reason for each. Format as a numbered list.`;
+        recPrompt += `\n\nRecommend 10 similar movies with a short (1-2 sentence) reason for each. Format as a numbered list with markdown formatting. Use emojis sparingly to make it engaging.`;
 
         // Call Gemini for recommendations
         const recText = await callGemini(recPrompt);
