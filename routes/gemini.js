@@ -3,48 +3,83 @@ const router = express.Router();
 const axios = require('axios');
 const authenticateToken = require('../middleware/auth');
 const aiService = require('../services/aiService');
+const geminiKeyManager = require('../services/geminiKeyManager');
 
 // Google Gemini API configuration (Fallback)
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 const USE_GEMINI_FALLBACK = process.env.USE_GEMINI_FALLBACK === 'true';
+const MAX_RETRIES = 4; // Try up to 4 different keys
 
 // Helper function: Fallback to Gemini if RAG AI fails or returns empty
 async function callGemini(prompt, systemInstruction = null, generationConfig = null, contents = null) {
-  try {
-    const requestBody = {
-      contents: contents || [
-        {
-          parts: [
-            {
-              text: prompt
-            }
-          ]
-        }
-      ]
-    };
+  let lastError = null;
+  let attempts = 0;
 
-    if (systemInstruction) {
-      requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
-    }
-    if (generationConfig) {
-      requestBody.generationConfig = generationConfig;
-    }
+  while (attempts < MAX_RETRIES) {
+    try {
+      // Get current API key from key manager
+      const apiKey = geminiKeyManager.getCurrentKey();
 
-    const response = await axios.post(
-      `${GEMINI_API_URL}?key=${GEMINI_API_KEY}`,
-      requestBody,
-      {
-        headers: {
-          'Content-Type': 'application/json'
-        }
+      const requestBody = {
+        contents: contents || [
+          {
+            parts: [
+              {
+                text: prompt
+              }
+            ]
+          }
+        ]
+      };
+
+      if (systemInstruction) {
+        requestBody.systemInstruction = { parts: [{ text: systemInstruction }] };
       }
-    );
-    return response.data.candidates[0].content.parts[0].text.trim();
-  } catch (error) {
-    console.error('Gemini Fallback Error:', error.response?.data || error.message);
-    throw error;
+      if (generationConfig) {
+        requestBody.generationConfig = generationConfig;
+      }
+
+      const response = await axios.post(
+        `${GEMINI_API_URL}?key=${apiKey}`,
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      // Success! Mark key as successful and return result
+      geminiKeyManager.markCurrentKeySuccess();
+      return response.data.candidates[0].content.parts[0].text.trim();
+
+    } catch (error) {
+      lastError = error;
+      attempts++;
+
+      console.error(`Gemini API Error (attempt ${attempts}/${MAX_RETRIES}):`, error.response?.data || error.message);
+
+      // Check if this is a quota/rate limit error
+      if (geminiKeyManager.isQuotaError(error)) {
+        console.log('🔄 Quota/rate limit error detected, rotating to next API key...');
+        geminiKeyManager.markCurrentKeyFailedAndRotate(error);
+
+        // If we have more retries left, continue to next key
+        if (attempts < MAX_RETRIES) {
+          console.log(`Retrying with next API key (attempt ${attempts + 1}/${MAX_RETRIES})...`);
+          continue;
+        }
+      } else {
+        // For non-quota errors (like auth errors), don't retry
+        console.error('Non-quota error encountered, not retrying.');
+        throw error;
+      }
+    }
   }
+
+  // All retries exhausted
+  console.error(`❌ All ${MAX_RETRIES} API key attempts exhausted`);
+  throw lastError;
 }
 
 /**
@@ -636,6 +671,28 @@ User Question: ${userMessage}`;
       success: false,
       message: 'Failed to generate chat response',
       error: error.response?.data?.error?.message || error.message
+    });
+  }
+});
+
+/**
+ * @route   GET /api/gemini/key-stats
+ * @desc    Get Gemini API key rotation statistics (for debugging)
+ * @access  Private (JWT required)
+ */
+router.get('/key-stats', authenticateToken, async (req, res) => {
+  try {
+    const stats = geminiKeyManager.getStats();
+    res.json({
+      success: true,
+      message: 'Key statistics retrieved successfully',
+      data: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve key statistics',
+      error: error.message
     });
   }
 });
