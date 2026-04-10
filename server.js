@@ -12,6 +12,9 @@ const geminiRoutes = require('./routes/gemini');
 const profileRoutes = require('./routes/profile');
 const personRoutes = require('./routes/person');
 
+// Import services
+const keepAliveService = require('./services/keepAlive');
+
 // Initialize Express app
 const app = express();
 
@@ -87,6 +90,15 @@ app.get('/health', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
+  });
+});
+
+// Keep-alive status endpoint
+app.get('/keep-alive/status', (_req, res) => {
+  res.status(200).json({
+    success: true,
+    keepAlive: keepAliveService.getStatus(),
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -197,6 +209,9 @@ connectDB().then((dbConnected) => {
 ║                                               ║
 ╚═══════════════════════════════════════════════╝
     `);
+
+    // Start keep-alive service to prevent server from sleeping
+    keepAliveService.start();
   });
 
   // Handle server 'error' events (e.g. port already in use)
@@ -242,6 +257,7 @@ connectDB().then((dbConnected) => {
   // Handle SIGTERM
   process.on('SIGTERM', () => {
     console.log('👋 SIGTERM received. Shutting down gracefully...');
+    keepAliveService.stop();
     if (server && typeof server.close === 'function') {
       server.close(() => {
         console.log('💤 Server closed.');
