@@ -27,16 +27,6 @@ The CineScope backend now features an **automatic Gemini API key rotation system
 
 In your `.env` file, configure multiple Gemini API keys:
 
-```env
-# Recommended: Use GEMINI_API_KEYS for multiple keys (comma-separated, no spaces)
-GEMINI_API_KEYS=AIzaSyCZYGliOSWQaN5Wx3-z8gC6F7VpcCxOEDw,AIzaSyDFOclYHOjq6B9I0cL92rKNrTKGd9WK5ic,AIzaSyC3Ke7-RQRKhdEJlNldMV0ZQ4NgpRkqHms,AIzaSyD4567890abcdefghijk
-
-# Fallback: Single key (for backward compatibility)
-GEMINI_API_KEY=AIzaSyCZYGliOSWQaN5Wx3-z8gC6F7VpcCxOEDw
-
-# Enable Gemini as fallback when RAG AI is unavailable
-USE_GEMINI_FALLBACK=true
-```
 
 **Important:**
 - Separate keys with commas (`,`)
